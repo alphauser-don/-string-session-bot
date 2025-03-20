@@ -1,32 +1,34 @@
 from pyrogram import Client
-from pyrogram.errors import SessionPasswordNeeded
+from pyrogram.errors import ApiIdInvalid, PhoneNumberInvalid
 
-async def generate_session(api_id, api_hash, phone, bot, user_id):
-    client = Client(":memory:", api_id=api_id, api_hash=api_hash)
+async def create_client(
+    api_id: int, 
+    api_hash: str, 
+    session_name: str
+) -> Client:
+    """
+    Creates and returns a Pyrogram Client instance with validation
     
-    await client.connect()
+    Args:
+        api_id: Telegram API ID from my.telegram.org
+        api_hash: Telegram API HASH from my.telegram.org
+        session_name: Unique identifier for user session
     
-    sent_code = await client.send_code(phone)
+    Returns:
+        Pyrogram Client instance
     
-    async def send_code_to_user():
-        await bot.send_message(
-            chat_id=user_id,
-            text=f"Your login code: {sent_code.phone_code_hash}"
-        )
-    
-    await send_code_to_user()
-    
-    code = input("Enter the OTP: ")  # In real implementation, use conversation handler
-    
+    Raises:
+        ValueError: If credentials are invalid
+    """
     try:
-        await client.sign_in(phone, sent_code.phone_code_hash, code)
-    except SessionPasswordNeeded:
-        password = input("Enter your 2FA password: ")  # Add conversation handler step
-        await client.check_password(password)
-    
-    string_session = await client.export_session_string()
-    
-    await client.send_message("me", f"**String Session:**\n`{string_session}`")
-    await client.disconnect()
-    
-    return string_session
+        return Client(
+            name=str(session_name),
+            api_id=api_id,
+            api_hash=api_hash,
+            workdir="sessions/",
+            in_memory=False  # Persist session for error recovery
+        )
+    except (ApiIdInvalid, PhoneNumberInvalid) as e:
+        raise ValueError(f"Invalid credentials: {str(e)}") from e
+    except Exception as e:
+        raise RuntimeError(f"Client creation failed: {str(e)}") from e
