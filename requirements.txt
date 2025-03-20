@@ -1,0 +1,5 @@
+python-telegram-bot[ext]>=20.0
+pyrogram>=2.0.0
+tgcrypto
+python-dotenv
+gitpython
